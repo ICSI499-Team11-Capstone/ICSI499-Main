@@ -147,7 +147,3 @@ npm install
 4. Verify virtual environment: `which python` (should show venv path)
 5. Ask team in group chat
 6. Create GitHub issue with error details
-
----
-
-**Pro tip:** Bookmark this file for quick access to common commands!
