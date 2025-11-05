@@ -1,0 +1,14 @@
+{"Parameters":
+    {
+        "Number of Samples": 1000,
+        "Wavelength Proxy Threshold": 90,
+        "LII Proxy Threshold": 90,
+        "Corresponding Label": "N",
+        "Group Label": "clean-N",
+        "Original Data Path": "data-and-cleaning/SORTED-250116-shuffled-final-labeled-data-log10.xlsx",
+        "Distance Data Path": "data-and-cleaning/CSdistance-250116-shuffled-final-labeled-data-log10.xlsx",
+        "Model Path": "models/optuna/a22lds22b0.007g0.9132648047995245d1.0h110.007_0.9132648047995245_1.0_22_1_0.0_11_17.pt",
+        "Path to R": "/Library/Frameworks/R.framework/Resources"
+    }
+}
+

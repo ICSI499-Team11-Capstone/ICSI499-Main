@@ -1,0 +1,29 @@
+numpy==2.3.4
+matplotlib==3.10.7
+pandas==2.3.3
+scikit-learn==1.7.2
+scipy==1.16.3
+joblib==1.5.2
+matplotlib==3.10.7
+seaborn==0.13.2
+plotly==6.3.1
+XlsxWriter==3.2.9
+openpyxl==3.1.5
+optuna==4.5.0
+bayesian-optimization==3.1.0
+torch==2.9.0
+torch_geometric==2.7.0
+torchvision==0.24.0
+tensorboardX==2.6.4
+lightgbm==4.6.0
+xgboost==3.1.1
+# catboost==1.2.8
+# umap-learn==0.5.9.post2
+# pynndescent==0.5.13
+networkx==3.5
+transformers==4.57.1
+tokenizers==0.22.1
+fair-esm==2.0.0
+# huggingface-hub==1.0.1
+rpy2==3.6.4
+tqdm==4.67.1

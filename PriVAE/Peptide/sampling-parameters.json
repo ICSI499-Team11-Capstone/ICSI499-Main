@@ -1,0 +1,13 @@
+{"Parameters":
+    {
+        "Number of Samples": 1000,
+        "Wavelength Proxy Threshold": 90,
+        "LII Proxy Threshold": 90,
+        "Corresponding Label": "B",
+        "Original Data Path": "data-and-cleaning/train_with_binary_labels_and_clusters.xlsx",
+        "Distance Data Path": "data-and-cleaning/L1-shuffled_pepdata_labeled_Mar28.xlsx",
+        "Model Path": "Peptide-paper/FullModel/GNN+REG-a32lds32b0.007g0.5890989775345152d1.0h160.007_0.5890989775345152_1.0_32_1_0.0_16_15.pt",
+        "Path to R": "/Library/Frameworks/R.framework/Resources"
+    }
+}
+

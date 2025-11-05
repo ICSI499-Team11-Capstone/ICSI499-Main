@@ -1,0 +1,18 @@
+{"Parameters":
+    {
+        "batch size": 32,
+        "number of epochs": 10,
+        "alpha": 0.01,
+        "beta": 0.007,
+        "gamma": 1,
+        "delta": 1,
+        "dropout": 0,
+        "number of latent dimensions": 19,
+        "number of LSTM layers": 1,
+        "hidden size": 13,
+        "number of linear dimensions": 16,
+        "training percentage": 0.85,
+        "weighting": true,
+        "path to training data": "data-and-cleaning/cleandata.csv"
+    }
+}

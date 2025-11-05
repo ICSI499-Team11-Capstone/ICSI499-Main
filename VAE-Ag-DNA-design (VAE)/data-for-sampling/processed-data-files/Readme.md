@@ -1,0 +1,1 @@
+This is a placeholder file for the folder that contains information about different samples

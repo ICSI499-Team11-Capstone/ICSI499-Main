@@ -1,0 +1,1 @@
+This folder is for weighted, non-kfold graphs from genGrid.py

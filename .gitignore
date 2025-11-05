@@ -1,0 +1,55 @@
+# Large data files
+*.xlsx
+*.npz
+*.pt
+*.pth
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+venv/
+env/
+.venv
+
+# Node
+node_modules/
+.npm
+*.log
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Model files (too large for git)
+models/
+*.h5
+*.pkl
+*.model
+
+# Data directories
+data-and-cleaning/*.xlsx
+data-and-cleaning/*.csv
+data-for-sampling/past-samples-with-info/
+data-for-sampling/processed-data-files/*.npz
+
+# Jupyter
+.ipynb_checkpoints/
+
+# R
+.Rhistory
+.RData
+
+# Zone Identifier files (Windows)
+*:Zone.Identifier
