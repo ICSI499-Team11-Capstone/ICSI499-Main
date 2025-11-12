@@ -1,73 +1,83 @@
-import csv
 import numpy as np
 import pandas as pd
 from sklearn.svm import LinearSVC
+from sklearn.calibration import CalibratedClassifierCV
 from dna_featuregenerator import create_feature_vectors
 from balanced_class import balanced_subsample
-from sklearn.metrics import f1_score,confusion_matrix
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.calibration import CalibratedClassifierCV
-from itertools import product
 
-test_sequences = ["file_name"]
-sequences = ['dark_green.txt',
-             'dark_red.txt',
-             'dark_vred.txt',
-             'dark_nir.txt',
-             'green_red.txt',
-             'green_vred.txt',
-             'green_nir.txt',
-             'red_vred.txt',
-             'red_nir.txt',
-             'vred_nir.txt']
+out = "predictions.csv"
+sequences = ['training data/dark_green.txt',
+             'training data/dark_red.txt',
+             'training data/dark_vred.txt',
+             'training data/dark_nir.txt',
+             'training data/green_red.txt',
+             'training data/green_vred.txt',
+             'training data/green_nir.txt',
+             'training data/red_vred.txt',
+             'training data/red_nir.txt',
+             'training data/vred_nir.txt']
 
-classifiers=[]
-df = pd.DataFrame()
-for i in sequences:
-    features=create_feature_vectors(i)
-    for j in range(10):
-        x1 = []
-        y1 = []
-        X = features.drop('color', axis=1)
-        y = features['color']
-        xs,ys=balanced_subsample(X,y)
-        svm = LinearSVC(penalty='l1', loss='squared_hinge', dual=False,random_state=0, tol=1e-5,max_iter=1000000, C=.1)
-        svm.fit(xs,ys)
+# Train classifiers on each sequence file
+classifiers = []
+for sequence_file in sequences:
+    features = create_feature_vectors(sequence_file)
+    X = features.drop('color', axis=1)
+    y = features['color']
+    
+    # Train 10 classifiers per sequence file
+    for _ in range(10):
+        xs, ys = balanced_subsample(X, y)
+        svm = LinearSVC(penalty='l1', loss='squared_hinge', dual=False, 
+                       random_state=0, tol=1e-5, max_iter=1000000, C=0.1)
+        svm.fit(xs, ys)
         clf = CalibratedClassifierCV(svm)
-        clf.fit(xs,ys)
+        clf.fit(xs, ys)
         classifiers.append(clf)
-print("done")
+print("Training complete")
 
-k=0
-output_file = "predictions.csv"
-
-for i in sequences:
-    seq = create_feature_vectors(test_sequences)
-    seq = seq.drop('color', axis=1)
+# Make predictions for each test file
+classifier_idx = 0
+for test_file in sequences:
+    df = pd.DataFrame()
     
-    # Initialize x2 and y2 with first prediction
-    b = classifiers[k]
-    a = b.predict_proba(seq)
-    k += 1
-    x2 = np.array([l for l, m in a])
-    y2 = np.array([m for l, m in a])
+    # Load test sequences
+    test_features = create_feature_vectors(test_file)
+    test_X = test_features.drop('color', axis=1)
     
-    # Add remaining predictions
-    for j in range(1, 10):
-        b = classifiers[k]
-        a = b.predict_proba(seq)
-        k += 1
-        x1 = np.array([l for l, m in a])
-        y1 = np.array([m for l, m in a])
-        x2 = np.add(x1, x2)
-        y2 = np.add(y1, y2)
+    # Get predictions from each classifier set
+    for sequence_file in sequences:
+        prob_class0 = []
+        prob_class1 = []
+        
+        # Average predictions across 10 classifiers
+        for _ in range(10):
+            clf = classifiers[classifier_idx]
+            predictions = clf.predict_proba(test_X)
+            classifier_idx += 1
+            
+            if len(prob_class0) == 0:
+                for class0_prob, class1_prob in predictions:
+                    prob_class0.append(class0_prob)
+                    prob_class1.append(class1_prob)
+            else:
+                temp_class0 = []
+                temp_class1 = []
+                for class0_prob, class1_prob in predictions:
+                    temp_class0.append(class0_prob)
+                    temp_class1.append(class1_prob)
+                prob_class0 = np.add(temp_class0, prob_class0)
+                prob_class1 = np.add(temp_class1, prob_class1)
+        
+        # Average the probabilities
+        prob_class0 = prob_class0 / 10
+        prob_class1 = prob_class1 / 10
+        
+        df[sequence_file] = prob_class0.tolist()
+        df[sequence_file + "_class1"] = prob_class1.tolist()
     
-    # Average the predictions
-    x2 = x2 / 10
-    y2 = y2 / 10
+    # Save predictions for this test file
+    print(f"Saving predictions for {test_file}")
+    df.to_csv(out, mode='a', header=False)
     
-    # Store in dataframe
-    df[i] = x2.tolist()
-    df[i+"2"] = y2.tolist()
-
-df.to_csv(output_file, mode='a', header=False)
+    # Reset classifier index for next test file
+    classifier_idx = 0
