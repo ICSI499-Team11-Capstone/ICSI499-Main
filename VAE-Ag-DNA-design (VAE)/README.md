@@ -1,318 +1,87 @@
-# DNA Nanomachine Designer
+# Multi-Objective Design of DNA-Stabilized Nanoclusters Using Variational Autoencoders With Automatic Feature Extraction
 
-A web application for designing DNA sequences with specific optical properties using VAE and PriVAE machine learning models.
+<div style="display: flex; justify-content: space-between;">
+    <img src="https://upload.wikimedia.org/wikipedia/en/thumb/0/0e/University_of_California%2C_Irvine_seal.svg/150px-University_of_California%2C_Irvine_seal.svg.png" alt="University of California, Irvine Logo" width="80">
+    <img src="https://www.cs.albany.edu/~petko/lab/img/logo1.png" alt="Lab Logo" width="200">
+</div>
+<img src="https://www.cs.albany.edu/sccepr/img/logo1.png" alt="University Logo" width="260">
 
-## 📋 Table of Contents
-- [Features](#features)
-- [Project Structure](#project-structure)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-  - [Windows Setup](#windows-setup)
-  - [macOS Setup](#macos-setup)
-  - [Linux/WSL Setup](#linuxwsl-setup)
-- [Running the Application](#running-the-application)
-- [Usage Guide](#usage-guide)
-- [API Documentation](#api-documentation)
-- [Development](#development)
-- [Troubleshooting](#troubleshooting)
+## Team
+- [Copp lab](https://copplab.eng.uci.edu/)
+- [Data Mining and Management lab](http://www.cs.albany.edu/~petko/lab/)
 
----
-
-## ✨ Features
-
-### VAE Model
-- **Wavelength Proxy Threshold**: Filter sequences by minimum wavelength threshold (0-100%)
-- **LII (Brightness) Proxy Threshold**: Filter sequences by minimum brightness threshold (0-100%)
-- **Number of Samples**: Generate 10 to 10,000 sequences
-- **Export Formats**: JSON, CSV, Excel-compatible CSV
-
-### PriVAE Model
-- **Group Labels**: Select from wavelength groups
-  - Clean: G (Green), R (Red), F (Far-Red), N (NIR)
-  - Mixed: Various combinations (e.g., G-R, R-F, N-G, etc.)
-- **Number of Sample**: Generate 10 to 10,000 sequences
-- **Export Formats**: JSON, CSV, Excel-compatible CSV
+## Contents
+- Introduction
+- Problem Formulation and Solution
+- Outline
 
 ---
 
-## 📁 Project Structure
+## Introduction
 
-```
-DNA-Design-Web/
-├── backend/                    # FastAPI backend
-│   ├── app/
-│   │   ├── main.py            # Main API application
-│   │   └── routers/
-│   │       └── vae.py         # VAE model endpoints
-│   ├── venv/                  # Python virtual environment
-│   └── requirements.txt       # Python dependencies
-├── src/                       # Astro frontend
-│   ├── components/
-│   │   ├── DNADesigner.tsx    # Main designer component
-│   │   └── Navigation.astro   # Navigation bar
-│   ├── pages/
-│   │   ├── index.astro        # Home page
-│   │   └── designer.astro     # Designer page
-│   └── layouts/
-│       └── Layout.astro       # Base layout
-├── node_modules/              # Node.js dependencies
-├── package.json               # Node.js dependencies list
-└── README.md                  # This file
-```
+This repository contains code, training data, and experimental validation for a **regularized variational autoencoder (VAE)** model that performs automatic feature extraction for the multi-objective design of DNA-stabilized silver nanoclusters (AgN-DNAs). The repository accompanies the manuscript titled **"Multi-Objective Design of DNA-Stabilized Nanoclusters Using Variational Autoencoders With Automatic Feature Extraction"** (Sadeghi, Mastracco, et al., 2024), DOI [accepted manuscript - pending DOI].
+
+![Schematic of DNA-Nanocluster Interaction and Generative VAE Model for Multi-Objective Design](graphs/Model_description.jpg)
+
+The goal of this project is to design DNA templates that can tune the fluorescence properties of silver nanoclusters (AgN-DNAs) for applications such as deep tissue bioimaging.
+
+Traditional approaches rely on manual feature engineering to design DNA sequences that produce desired properties in AgN-DNAs, which can be labor-intensive and limited to a single property. In contrast, this VAE-based model is generative, allowing for **automatic feature extraction** and **multi-objective design**, enabling the simultaneous optimization of multiple AgN-DNA properties, such as fluorescence color and brightness.
+
+Key contributions:
+- A generative model for multi-property design of AgN-DNAs.
+- Efficient sampling of DNA sequences with desired fluorescence properties.
+- Application of **Shapley analysis** to identify DNA motifs responsible for specific properties.
+- Broad applicability to other biomolecular systems with sequence-dependent properties.
 
 ---
 
-## 🔧 Prerequisites
+## Problem Formulation and Solution
 
-### All Platforms
-- **Python 3.8+** - Backend API server
-- **Node.js 18+** - Frontend development server
-- **Git** - Version control
-- **Terminal/Command Line** access
+### Problem
+Design DNA sequences that "code for" silver nanoclusters (AgN-DNAs) with specific properties, such as near-infrared (NIR) emission for deep tissue imaging. The challenge is to enable multi-objective optimization of DNA sequences without manual feature engineering.
 
-### Installation Links
-- Python: https://www.python.org/downloads/
-- Node.js: https://nodejs.org/ (LTS version recommended)
-- Git: https://git-scm.com/downloads
+### Solution
+We developed a **property-regularized VAE** to learn a structured latent space that captures the relationships between DNA sequences and AgN-DNA properties. The VAE model can generate new DNA sequences optimized for specific fluorescence properties, providing both forward and inverse mappings (from sequence to properties and vice versa).
 
 ---
 
-## 💻 Installation
+## Outline
 
-### Windows Setup
+This repository includes the following files and directories:
 
-#### 1. Install Prerequisites
-```powershell
-# Download and install Python from python.org
-# Download and install Node.js from nodejs.org
-# Download and install Git from git-scm.com
+- `./utils/`: Contains various utility functions and modules required for model training and execution.
+    - `helpers.py`: Handles GPU availability and other utilities for managing training resources.
+    - `model.py`: Defines an abstract model based on `torch.nn.Module`, extending with helper functions for easier model development.
+    - `trainer.py`: Provides an abstract trainer class and mathematical utilities for calculating loss functions.
+  
+- `./genGrid.py`: Entry point for conducting grid searches to optimize hyperparameters for the VAE model.
+  
+- `./plotRun.py`: Converts the training logs into plots for visualizing model performance.
 
-# Verify installations
-python --version
-node --version
-npm --version
-git --version
-```
+- `./sampleSeqs.py`: Generates DNA sequences based on the trained VAE model.
 
-#### 2. Clone Repository
-```powershell
-git clone <repository-url>
-cd DNA-Design-Web
-```
+- `./sequenceDataset.py`: Loads and processes the dataset of DNA sequences and their corresponding fluorescence properties.
 
-#### 3. Setup Backend
-```powershell
-# Navigate to backend directory
-cd backend
+- `./sequenceModel.py`: Concrete implementation of the property-regularized VAE model for AgN-DNA sequence generation.
 
-# Create virtual environment
-python -m venv venv
+- `./kfoldrun.py`: Script for performing k-fold cross-validation to assess the model’s performance with different data splits.
 
-# Activate virtual environment
-.\venv\Scripts\activate
+- `./kfoldPlotter.py`: Generates visualizations based on k-fold cross-validation results.
 
-# Install Python dependencies
-pip install -r requirements.txt
+- `./shapley-gaussian.py`: Computes the Gaussian Shapley values for analyzing feature importance in different DNA sequence groups.
 
-# Return to project root
-cd ..
-```
+- `./shapley-plots.ipynb`: Jupyter Notebook for visualizing the Shapley values with heatmaps and graphs, helping to interpret the model's decisions.
 
-#### 4. Setup Frontend
-```powershell
-# Install Node.js dependencies
-npm install
-```
+- `./requirements.txt`: A list of dependencies needed to run the project, easily installable via `pip`.
 
 ---
 
-### macOS Setup
+## Getting Started
 
-#### 1. Install Prerequisites
-```bash
-# Install Homebrew (if not already installed)
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+To set up the environment and run the code, follow these steps:
 
-# Install Python, Node.js, and Git
-brew install python node git
-
-# Verify installations
-python3 --version
-node --version
-npm --version
-git --version
-```
-
-#### 2. Clone Repository
-```bash
-git clone <repository-url>
-cd DNA-Design-Web
-```
-
-#### 3. Setup Backend
-```bash
-# Navigate to backend directory
-cd backend
-
-# Create virtual environment
-python3 -m venv venv
-
-# Activate virtual environment
-source venv/bin/activate
-
-# Install Python dependencies
-pip install -r requirements.txt
-
-# Return to project root
-cd ..
-```
-
-#### 4. Setup Frontend
-```bash
-# Install Node.js dependencies
-npm install
-```
-
----
-
-### Linux/WSL Setup
-
-#### 1. Install Prerequisites (Ubuntu/Debian)
-```bash
-# Update package list
-sudo apt update
-
-# Install Python, Node.js, and Git
-sudo apt install python3 python3-pip python3-venv nodejs npm git
-
-# Verify installations
-python3 --version
-node --version
-npm --version
-git --version
-```
-
-**WSL Users:** Make sure you're running commands inside WSL, not from Windows PowerShell.
-
-#### 2. Clone Repository
-```bash
-git clone <repository-url>
-cd DNA-Design-Web
-```
-
-#### 3. Setup Backend
-```bash
-# Navigate to backend directory
-cd backend
-
-# Create virtual environment
-python3 -m venv venv
-
-# Activate virtual environment
-source venv/bin/activate
-
-# Install Python dependencies
-pip install -r requirements.txt
-
-# Return to project root
-cd ..
-```
-
-#### 4. Setup Frontend
-```bash
-# Install Node.js dependencies
-npm install
-```
-
-## Running the Application
-
-You need to run **both** the backend and frontend servers simultaneously.
-
-### Two Terminal Setup (Recommended)
-
-**Terminal 1 - Backend Server:**
-```bash
-cd backend
-source venv/bin/activate
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-The backend API will be available at:
-- API: http://localhost:8000
-- API Docs: http://localhost:8000/docs
-
-**Terminal 2 - Frontend Server:**
-```bash
-npm run dev
-```
-
-The frontend will be available at:
-- Web UI: http://localhost:4321
-
-## Usage
-
-1. Navigate to http://localhost:4321 in your browser
-2. Click "Open Designer" to access the DNA sequence designer
-3. Select a model (VAE or PriVAE)
-4. Configure the parameters:
-   - For VAE: Set wavelength and brightness thresholds
-   - For PriVAE: Choose a group label
-   - Select number of samples (preset or custom)
-5. Choose an export format (JSON, CSV, or Excel)
-6. Click "Generate & Download"
-7. View the generated sequences and download if needed
-
-## API Endpoints
-
-### VAE Endpoints
-
-- `POST /api/v1/vae/sample` - Generate sample DNA sequences
-- `GET /api/v1/vae/transform/{sequence}` - Transform a sequence to one-hot encoding
-- `GET /api/v1/vae/stats` - Get dataset statistics
-
-Interactive API documentation: http://localhost:8000/docs
-
-## Development
-
-### Frontend Development
-```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run preview      # Preview production build
-```
-
-### Backend Development
-```bash
-cd backend
-source venv/bin/activate
-uvicorn app.main:app --reload  # Auto-reload on code changes
-```
-
-## Technology Stack
-
-- **Frontend**: Astro, React, TypeScript, Tailwind CSS, TanStack Query
-- **Backend**: FastAPI, Python, PyTorch, NumPy, Pandas
-- **Models**: VAE, PriVAE (external model directories)
-
-## Troubleshooting
-
-### Port Already in Use
-```bash
-pkill -f uvicorn
-```
-
-### Module Import Errors
-```bash
-cd backend
-source venv/bin/activate
-```
-
-### Frontend Build Errors
-```bash
-rm -rf node_modules package-lock.json
-npm install
-```
-
-## License
-
-UAlbany 2025
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/copplab/VAE-Ag-DNA-design.git
+   cd VAE-Ag-DNA-design
+    ```

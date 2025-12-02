@@ -1,6 +1,7 @@
 # Project-specific large data files
 *.xlsx
 *.npz
+*.npy
 *.pt
 *.pth
 
@@ -15,6 +16,16 @@ data-and-cleaning/*.xlsx
 data-and-cleaning/*.csv
 data-for-sampling/past-samples-with-info/
 data-for-sampling/processed-data-files/*.npz
+
+# Exceptions for specific data files we want to keep
+# !**/CSdistance*.xlsx
+# !**/SORTED*.xlsx
+
+# Generated sequence files
+**/detailed-sequences
+**/generated-sequences
+**/generated-sequences-*
+**/samples-*
 
 # R
 .Rhistory

@@ -1,129 +1,120 @@
-# ICSI 499 - DNA Design Project
+# DNA Nanomachine Designer (ICSI 499 Capstone)
 
-## Project Overview
+A comprehensive tool for designing DNA sequences with specific fluorescence properties using VAE and PriVAE machine learning models.
 
-This project provides tools and a web interface for designing DNA sequences with specific fluorescence properties. It includes:
-- A web interface for sequence generation and classification
-- Command-line tools for advanced model training and sampling
-- Multiple models: VAE, PriVAE, and a Classifier
+## Quick Start
+
+### Prerequisites
+- **Python 3.12+**
+- **Node.js 18+**
+- **Git**
+
+### Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone --recurse-submodules https://github.com/ICSI499-Team11-Capstone/ICSI499-Main.git
+   cd ICSI499-Main
+   ```
+
+2. **Install Dependencies:**
+   
+   *Backend:*
+   ```bash
+   cd DNA-Design-Web/backend
+   pip install -r requirements.txt
+   ```
+
+   *Frontend:*
+   ```bash
+   cd ../  # Go to DNA-Design-Web/
+   npm install
+   cd ../  # Return to root
+   ```
+
+### Data Setup
+
+> [!IMPORTANT]
+> Some data files are too large to be hosted on GitHub. You must download them manually.
+
+1.  **Download Data Files**:
+    Go to the [Project Google Drive](https://drive.google.com/drive/folders/1b4egKmzdscT5vnMuIk53E3rzYnFzET5E) and download the following files:
+    *   `CSdistance-250116-shuffled-final-labeled-data-log10.xlsx`
+    *   `SORTED-250116-shuffled-final-labeled-data-log10.xlsx`
+
+2.  **Place Files**:
+    Move the downloaded files into the `PriVAE/DNA/data-and-cleaning/` directory.
+
+### Configuration
+
+> [!NOTE]
+> The application uses `.env` files for configuration. You can customize ports and URLs by creating `.env` files based on the provided examples.
+
+1.  **Frontend Configuration** (`DNA-Design-Web/.env`):
+    ```bash
+    cp DNA-Design-Web/.env.example DNA-Design-Web/.env
+    ```
+    *   `PUBLIC_API_URL`: URL of the backend API (default: `http://localhost:8000`)
+    *   `PORT`: Port for the frontend server (default: `4321`)
+
+2.  **Backend Configuration** (`DNA-Design-Web/backend/.env`):
+    ```bash
+    cp DNA-Design-Web/backend/.env.example DNA-Design-Web/backend/.env
+    ```
+    *   `API_HOST`: Host for the backend server (default: `0.0.0.0`)
+    *   `API_PORT`: Port for the backend server (default: `8000`)
+    *   `FRONTEND_URL`: URL of the frontend (for CORS) (default: `http://localhost:4321`)
+
+### Running the Application
+
+- **Linux / macOS**:
+  ```bash
+  ./run_app.sh
+  ```
+
+- **Windows**:
+  Double-click `run_app.bat` or run in CMD:
+  ```cmd
+  run_app.bat
+  ```
+
+The application will start:
+- **Frontend**: [http://localhost:4321](http://localhost:4321)
+- **Backend**: [http://localhost:8000](http://localhost:8000)
+
+---
 
 ## Project Structure
 
-- `DNA-Design-Web/` - Web interface (Astro + React frontend, FastAPI backend)
-- `VAE-Ag-DNA-design (VAE)/` - Command-line DNA generation and model training
-- `PriVAE/` - Advanced property-isometric VAE (in development)
-- `Ag-DNA-design (Classifier)/` - DNA sequence color classifier
-
-## Requirements
-
-- Python 3.8 or higher
-- Node.js 18 or higher
-- Git
-
----
+- **`DNA-Design-Web/`**: The main web application (Astro + React frontend, FastAPI backend).
+- **`VAE-Ag-DNA-design (VAE)/`**: Variational Autoencoder model for DNA sequence generation.
+- **`PriVAE/`**: Advanced Property-Isometric VAE model.
+- **`Ag-DNA-design (Classifier)/`**: DNA sequence color classifier.
 
 ## Components
 
-### Web Interface
-- Location: `DNA-Design-Web/`
-- Tech: Astro + React frontend, FastAPI backend
-- Features: Generate and classify DNA sequences, download results, user-friendly interface
-- See: `DNA-Design-Web/QUICK_START.md` for setup and usage
+### Web Interface (`DNA-Design-Web/`)
+The user-facing interface for generating and classifying sequences.
+- **Frontend**: Astro, React, TailwindCSS
+- **Backend**: FastAPI, PyTorch
 
-### VAE Model
-- Location: `VAE-Ag-DNA-design (VAE)/`
-- Use: Command-line sequence generation and model training
-- Key Files: `sampleSequences.py`, `kfoldrun.py`, `sequenceTrainer.py`
+### VAE Model (`VAE-Ag-DNA-design (VAE)/`)
+Generates DNA sequences based on wavelength and brightness targets.
 
-### PriVAE
-- Location: `PriVAE/DNA/`
-- Model implemented; web interface displays generated results
-- Paper: [arXiv:2509.14287](https://arxiv.org/abs/2509.14287)
+### PriVAE Model (`PriVAE/`)
+Generates sequences with specific property targets using an isometric latent space.
 
-### Classifier
-- Location: `Ag-DNA-design (Classifier)/`
-- Model implemented; web interface displays classification results
-- Paper: [ACS Nano 2022](https://doi.org/10.1021/acsnano.2c05390)
+### Classifier (`Ag-DNA-design (Classifier)/`)
+Predicts the fluorescence class of a given DNA sequence.
 
 ---
 
-## Installation & Setup
+## Troubleshooting
 
-1. Clone the main repository and enter the web directory:
-	```bash
-	git clone --recurse-submodules https://github.com/ICSI499-Team11-Capstone/ICSI499-Main.git
-	cd ICSI499-Main
-	cd DNA-Design-Web
-	```
+> [!WARNING]
+> If you encounter issues:
+> 1. **"Module not found"**: Ensure you ran `pip install -r requirements.txt` in the `DNA-Design-Web/backend` folder.
+> 2. **"npm not found"**: Ensure Node.js is installed and in your PATH.
+> 3. **Ports in use**: The startup script attempts to free ports 8000 and 4321. If it fails, manually close applications using these ports.
 
-2. Environment configuration:
-	- The `.env` file is included. Edit it if you need to change ports, model paths, etc.
-	- If `.env` is missing, copy `.env.template` to `.env` and edit as needed.
-
-3. Backend wadawdawsetup:
-	```bash
-	cd backend
-	python3 -m venv venv
-	source venv/bin/activate  # Windows: .\venv\Scripts\activate
-	pip install -r requirements.txt
-	uvicorn app.main:app --reload
-	```
-
-4. Frontend setup (in a new terminal, in DNA-Design-Web):
-	```bash
-	npm install
-	npm run dev
-	```
-
-5. The frontend will be available at: http://localhost:3000
-	The backend API will be at: http://localhost:8000
-
-6. For command-line tools, see the README in each respective folder.
-
----
-
-## Usage
-
-### Web Interface
-1. Start the backend:
-	```bash
-	cd DNA-Design-Web/backend
-	source venv/bin/activate  # or .\venv\Scripts\activate on Windows
-	uvicorn app.main:app --reload
-	```
-2. Start the frontend (in a new terminal):
-	```bash
-	cd DNA-Design-Web
-	npm run dev
-	```
-3. Open your browser to: http://localhost:3000
-
-### Command Line
-See the README in `VAE-Ag-DNA-design (VAE)`, `PriVAE`, or `Ag-DNA-design (Classifier)` for details on running those tools.
-
----
-
-## Documentation
-
-- [Web Interface Guide](DNA-Design-Web/QUICK_START.md)
-- [Troubleshooting](DNA-Design-Web/TROUBLESHOOTING.md)
-- Individual component READMEs in each folder
-
----
-
-## Links (When Running)
-
-- Web Interface: http://localhost:3000
-- Backend API: http://localhost:8000
-- API Docs: http://localhost:8000/docs
-
----
-
-## Research
-
-- PriVAE: [arXiv:2509.14287](https://arxiv.org/abs/2509.14287)
-- Classifier: [ACS Nano 2022](https://doi.org/10.1021/acsnano.2c05390)
-
----
-
-**ICSI 499 - University at Albany**
+For more detailed web-specific troubleshooting, see [DNA-Design-Web/TROUBLESHOOTING.md](DNA-Design-Web/TROUBLESHOOTING.md).

@@ -115,7 +115,20 @@ class SequenceDataset:
     def __init__(self, datafile='./data-and-cleaning/SORTED-250116-shuffled-final-labeled-data-log10.xlsx',
                  seqlen=10, split=(0.85, 0.15), noofbuckets=10):
 
-        self.dist_file = pd.read_excel('./data-and-cleaning/CSdistance-250116-shuffled-final-labeled-data-log10.xlsx').values
+        import os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        dist_path = os.path.join(current_dir, 'data-and-cleaning', 'CSdistance-250116-shuffled-final-labeled-data-log10.xlsx')
+        
+        # Optimization: Check for .npy cache for distance file
+        dist_path_npy = dist_path.replace('.xlsx', '.npy')
+        if os.path.exists(dist_path_npy):
+            # print(f"Loading cached distance matrix from {dist_path_npy}...")
+            self.dist_file = np.load(dist_path_npy)
+        else:
+            # print(f"Loading distance matrix from {dist_path}...")
+            df = pd.read_excel(dist_path)
+            self.dist_file = df.values
+            np.save(dist_path_npy, self.dist_file)
 
         if datafile.endswith('xlsx'):
             self.dataset = pd.read_excel(datafile)

@@ -1,4 +1,3 @@
-
 from matplotlib.pyplot import axis
 import torch
 import numpy as np
@@ -128,7 +127,9 @@ def calculate_z_sample(latent_dist, z_mean, z_log_std, Label_matrix, num_of_samp
     mean_vector, covariance_matrix, lower bound vector, calls R script and returns calculated z_sample."""
     # print("calc zmean   ", z_mean.shape)
     # print("calc std    ", z_log_std.shape)
-    mean_matrix = latent_dist.mean.detach().cpu().numpy()
+    
+    # mean_matrix = latent_dist.mean.detach().cpu().numpy() # Unused
+    
     # print(" calc z    ", mean_matrix.shape)
     # # mean_matrix = mean_matrix[inds]
     # # print(" calc z inds   ", mean_matrix.shape)
@@ -282,7 +283,7 @@ def write_encoded_sequence_wavelength_lii(path_to_generated: str, path_to_data_f
     # print("file contents    ", file_contents)
 
     with open(path_to_generated, 'r+') as f:
-        cols = "Sequence Generated,Value Generated,Purity,Top 15 Neighbors,Corresponding Neighbor Sequences,Top 20 Neighbors, Sequence Encoded/Decoded,Value Encoded,Ratio\n"
+        cols = "Sequence Generated,Value Generated,Purity,Top 15 Neighbors,Corresponding Neighbor Sequences,Value Encoded,Sequence Reconstructed,Ratio\n"
         
         f.write(cols)
 
@@ -294,30 +295,30 @@ def write_encoded_sequence_wavelength_lii(path_to_generated: str, path_to_data_f
                 ratio = compare_sequences(sequence_original, sequence_generated)
                 ######
                 t = z_value[i,:].tolist()
-                # print("t    ", t)
-                t = [str(i) for i in t]
-                # print("t2    ", t)
+                t = [str(x) for x in t]
                 vals = '_'.join(t)
-                # vals = vals.replace('\\n','')
-                # print("vals    ", vals)
                 ######
-                # f.write(f"{line[:line.rindex(newline)-1]},{sequence_generated},{z_value[i]},{ratio}\n")
-                f.write(f"{line.strip()},{vals},{generated_purity[i]},{neighbor_labels_list[i]},{neighbor_sequences_list[i]}\n")
+                f.write(f"{line.strip()},{vals},{sequence_generated},{ratio}\n")
 
 
 
 
-def calculate_purity_jaccard(latent_code, class4_labels, base="N", k=15):
+def calculate_purity_jaccard(latent_code, class4_labels, base="N", k=15, adj_inds=None):
     """
     Calculate the Jaccard-based purity of each sample considering only the specified base.
     """
-    distances = pairwise_distances(latent_code)
+    if adj_inds is None:
+        distances = pairwise_distances(latent_code)
 
     neighbor_purity_scores = []
     neighbor_labels_15 = [] 
 
     for i in range(latent_code.shape[0]):
-        neighbor_indices = np.argsort(distances[i])[1:k+1]  
+        if adj_inds is not None:
+            # adj_inds already excludes self (from find_knn)
+            neighbor_indices = adj_inds[i][:k]
+        else:
+            neighbor_indices = np.argsort(distances[i])[1:k+1]  
         
         
         neighbor_labels = [class4_labels[idx] for idx in neighbor_indices]
@@ -330,7 +331,7 @@ def calculate_purity_jaccard(latent_code, class4_labels, base="N", k=15):
 
         jaccard_similarities = [
             len(current_label.intersection(neighbor)) / len(current_label.union(full))
-            if len(current_label.union(full)) > 0 else 0  # Avoid division by zero
+            if len(current_label.union(full)) > 0 else 0 # Avoid division by zero
             for neighbor, full in zip(neighbor_sets, full_sets)
         ]
 
@@ -450,19 +451,131 @@ def save_to_excel(sequences, labels, z_values, purities, neighbor_labels_15, fil
     print(f"Data saved to {file_name}")
 
 
+def load_static_resources(original_data_path, model_path, distance_data_path, progress_callback=None):
+    def log(msg):
+        if progress_callback:
+            progress_callback(msg)
+        else:
+            print(msg)
 
-def sampling(path_to_data_file: str, path_to_model: str, path_to_put: str, path_to_distance_file: str, num_of_samples: int, c_label: int, group_label: str) -> np.ndarray:
+    log("Loading static resources...")
+    
+    # 1. Process data
+    data = sd.SequenceDataset(original_data_path, 10)
+    ohe_sequences = data.transform_sequences(data.dataset['Sequence'].apply(lambda x: pd.Series([c for c in x])).to_numpy())
+    label = np.array(data.dataset['Label'])
+    c4_label = np.array(data.dataset['class 4'])
+    
+    # Create dictionary for duplicate checking (Optimization)
+    training_data_dict = {seq: seq for seq in data.dataset['Sequence']}
+    
+    data_file = {
+        'label': label,
+        'c4_label': c4_label,
+        'ohe': ohe_sequences
+    }
+    
+    # 2. Load model
+    log(f"Loading model from {model_path}...")
+    model = torch.load(model_path, map_location=torch.device('cpu'), weights_only=False)
+    for module in model.modules():
+        if hasattr(module, '__class__') and module.__class__.__name__ == 'GATConv':
+            if not hasattr(module, 'res'):
+                module.res = None
+                
+    # 3. Load distance and compute KNN
+    distance_data_path_npy = distance_data_path.replace('.xlsx', '.npy')
+    if os.path.exists(distance_data_path_npy):
+        log(f"Loading cached distance matrix from {distance_data_path_npy}...")
+        ds = np.load(distance_data_path_npy)
+    else:
+        log(f"Loading distance matrix from {distance_data_path}...")
+        df2 = pd.read_excel(distance_data_path)
+        ds = df2.values
+        np.save(distance_data_path_npy, ds)
+    
+    log("Computing KNN...")
+    adj_inds, adj_weights, adj_matrix = find_knn(ds, k=17)
+    
+    log("Extracting connections...")
+    new_adj_inds = extract_connections(indices=np.arange(len(ds)), raw_dataset=ds, X_batch=ds, label_batch=[None for i in ds], adj_inds=adj_inds, adj_weights=adj_weights)
+    
+    # 4. Pre-compute encodings (Lazy Loading Optimization)
+    log("Pre-computing encodings...")
+    if torch.cuda.is_available():
+        model = model.cuda()
+    
+    ohe_sequences_tensor = data_file['ohe']
+    # encode_data handles moving ohe to cuda if needed
+    latent_dist, z_mean, z_log_std = encode_data(ohe_sequences_tensor, model, new_adj_inds)
+    
+    # Move to CPU for storage
+    z_mean_cpu = z_mean.detach().cpu()
+    z_log_std_cpu = z_log_std.detach().cpu()
+    
+    # Purity is now calculated on-the-fly in sampling() to support different bases
+    
+    actual_sequences = [convert_sample(ohe_seq) for ohe_seq in data_file['ohe']]
+
+    return {
+        'data_file': data_file,
+        'model': model,
+        'distance_matrix': ds,
+        'adj_inds': adj_inds,
+        'adj_weights': adj_weights,
+        'new_adj_inds': new_adj_inds,
+        'z_mean': z_mean_cpu,
+        'z_log_std': z_log_std_cpu,
+        'actual_sequences': actual_sequences,
+        'training_data_dict': training_data_dict
+    }
+
+
+def sampling(path_to_data_file: str, path_to_model: str, path_to_put: str, path_to_distance_file: str, num_of_samples: int, c_label: int, group_label: str, original_data_path: str = None, static_resources=None, progress_callback=None) -> np.ndarray:
     """This function serves as a main function for the sampling process, taking in the path to the data file with the
     .npz extension, the path to the trained model used for sampling and a path to write the resulting sequences.
     Set the boolean value to True to only return the randomly sampled vectors from the truncated distribution,
     otherwise it decodes samples and writes to file path specified in arguments."""
 
-    print("sampliiiiiing  ...")
+    def log(msg):
+        if progress_callback:
+            progress_callback(msg)
+        else:
+            print(msg)
+
+    log("sampliiiiiing  ...")
 
     path_to_put_folder = f"{path_to_put}/samples-{time.time()}"
     os.mkdir(path_to_put_folder)
 
-    data_file, model = unpack_and_load_data(path_to_data_file, path_to_model)
+    if static_resources:
+        data_file = static_resources['data_file']
+        model = static_resources['model']
+        new_adj_inds = static_resources['new_adj_inds']
+        adj_inds = static_resources['adj_inds'] # Get cached adj_inds
+        # Use cached values if available
+        cached_z_mean = static_resources.get('z_mean')
+        cached_z_log_std = static_resources.get('z_log_std')
+        cached_actual_sequences = static_resources.get('actual_sequences')
+        training_data_dict = static_resources.get('training_data_dict')
+    else:
+        data_file, model = unpack_and_load_data(path_to_data_file, path_to_model)
+        
+        # Optimization: Check for .npy cache for distance file
+        distance_data_path_npy = path_to_distance_file.replace('.xlsx', '.npy')
+        if os.path.exists(distance_data_path_npy):
+            # log(f"Loading cached distance matrix from {distance_data_path_npy}...")
+            ds = np.load(distance_data_path_npy)
+        else:
+            # log(f"Loading distance matrix from {path_to_distance_file}...")
+            df2 = pd.read_excel(path_to_distance_file)
+            ds = df2.values
+            np.save(distance_data_path_npy, ds)
+            
+        adj_inds, adj_weights, adj_matrix = find_knn(ds,k=17)
+        new_adj_inds = extract_connections(indices=np.arange(len(ds)), raw_dataset=ds, X_batch=ds, label_batch=[None for i in ds], adj_inds=adj_inds, adj_weights=adj_weights)
+        cached_z_mean = None
+        training_data_dict = None
 
     if torch.cuda.is_available():
         model = model.cuda()
@@ -482,35 +595,31 @@ def sampling(path_to_data_file: str, path_to_model: str, path_to_put: str, path_
     # print("ohe shape    ", ohe_sequences_tensor.shape)
 
     #####################
-    df2 = pd.read_excel(path_to_distance_file)
-    ds = df2.values
-    adj_inds, adj_weights, adj_matrix = find_knn(ds,k=17)
-    new_adj_inds = extract_connections(indices=np.arange(len(ds)), raw_dataset=ds, X_batch=ds, label_batch=[None for i in ds], adj_inds=adj_inds, adj_weights=adj_weights)
-    # np.save('./temp_dist.npy', new_adj_inds)
-    # ##
-    # new_adj_inds = np.load('./temp_dist.npy')
+    # Distance matrix and KNN calculation moved to start of function
     #####################
-    latent_dist, z_mean, z_log_std = encode_data(ohe_sequences_tensor, model, new_adj_inds)
+    
+    if cached_z_mean is not None:
+        log("Using pre-computed encodings...")
+        z_mean = cached_z_mean
+        z_log_std = cached_z_log_std
+        actual_sequences = cached_actual_sequences
+        latent_dist = None
+    else:
+        log("Computing encodings (fallback)...")
+        latent_dist, z_mean, z_log_std = encode_data(ohe_sequences_tensor, model, new_adj_inds)
+        actual_sequences = [convert_sample(ohe_seq) for ohe_seq in data_file['ohe']]
 
-    # purity = purity_func(z_mean.detach().cpu().numpy(), label_array)
-    # purity = np.array(purity)
-    # actual_sequences = [convert_sample(ohe_seq) for ohe_seq in data_file['ohe']]
-
-    # Calculate purity and retrieve top 15 neighbors
-    purity, neighbor_labels_15 = calculate_purity_jaccard(z_mean.detach().cpu().numpy(), label_array)
+    # Determine base from c_label
+    base = "N"
+    if isinstance(c_label, str) and len(c_label) > 0:
+        base = c_label[0]
+    
+    log(f"Calculating purity for base '{base}'...")
+    # Calculate purity using cached adj_inds (fast)
+    purity, neighbor_labels_15 = calculate_purity_jaccard(z_mean.detach().cpu().numpy(), label_array, base=base, adj_inds=adj_inds)
     purity = np.array(purity)
-    actual_sequences = [convert_sample(ohe_seq) for ohe_seq in data_file['ohe']]
 
-
-    # Save everything in Excel
-    save_to_excel(
-        sequences=actual_sequences,
-        labels=label_array.tolist(),
-        z_values=z_mean.detach().cpu().numpy(),
-        purities=purity,
-        neighbor_labels_15=neighbor_labels_15,  # Now storing the neighbors
-        file_name="./data-and-cleaning/z-value/N-Purity-a22lds22b0.007g0.9132648047995245d1.0h11k17.xlsx"
-    )
+    # Ensure output directory exists using absolute path
 
     z_mean_all = z_mean.detach().cpu().numpy()  
     
@@ -607,7 +716,7 @@ def sampling(path_to_data_file: str, path_to_model: str, path_to_put: str, path_
     # )
         # Call function to get generated purity, neighbor labels, and sequences for top 15 neighbors
     generated_purity, neighbor_labels_list, neighbor_sequences_list = calculate_generated_purity_jaccard(
-        z_samples, z_mean_all, label_array, actual_sequences, c_label
+        z_samples, z_mean_all, label_array, actual_sequences, c_label, base=base
     )
 
     
@@ -615,7 +724,7 @@ def sampling(path_to_data_file: str, path_to_model: str, path_to_put: str, path_
     path_to_sequences = f"{path_to_put_folder}/generated-sequences"
     
     with open(path_to_sequences, 'a', newline='') as f:
-        f.write("Sequence,Wavelen,LII\n")
+        f.write("Sequence\n")
         for i, sample in enumerate(z_samples):
             sample = np.array(sample, dtype='float32')
             sample = torch.tensor(sample)
@@ -625,17 +734,24 @@ def sampling(path_to_data_file: str, path_to_model: str, path_to_put: str, path_
             convert_and_write_sample(decoded_sample, f)
     print(" 000  path to sequences    ", path_to_sequences)
     
-    post_processing(path_to_sequences, path_to_put_folder, z_samples, model, new_adj_inds, generated_purity, neighbor_labels_list, neighbor_sequences_list)
+    post_processing(path_to_sequences, path_to_put_folder, z_samples, model, new_adj_inds, generated_purity, neighbor_labels_list, neighbor_sequences_list, original_data_path, training_data_dict=training_data_dict)
+
+    return path_to_put_folder
 
 
 def post_processing(path_to_sequences, path_to_put_folder, z_samples, model, edge_index, 
-                    generated_purity, neighbor_labels_list, neighbor_sequences_list):
+                    generated_purity, neighbor_labels_list, neighbor_sequences_list, original_data_path=None, training_data_dict=None):
 
     """Handles post-processing of generated sequences, filtering, and storing sequence details."""
 
     filt.write_unique(path_to_sequences)
-    data_set_dict = filt.fill_training_data_dict(sampling_params["Original Data Path"])
-    filt.remove_duplicate(data_set_dict, path_to_sequences)
+    if training_data_dict:
+        filt.remove_duplicate(training_data_dict, path_to_sequences)
+    elif original_data_path:
+        data_set_dict = filt.fill_training_data_dict(original_data_path)
+        filt.remove_duplicate(data_set_dict, path_to_sequences)
+    else:
+        print("Warning: original_data_path not provided, skipping duplicate removal against training data.")
 
     # Fix: Pass neighbor_sequences_list
     detailed_data_path = write_detailed_sequences(path_to_put_folder, path_to_sequences, 
@@ -665,5 +781,5 @@ if __name__ == "__main__":
 
     print("setting loaded...")
     path_to_data_npz = process_data_file(sampling_params['Original Data Path'], prepended_name="clean-data-base", return_path=True)
-    sampling(path_to_data_npz, sampling_params['Model Path'], "./data-for-sampling", sampling_params['Distance Data Path'], sampling_params["Number of Samples"], sampling_params['Corresponding Label'], sampling_params['Group Label'])
+    sampling(path_to_data_npz, sampling_params['Model Path'], "./data-for-sampling", sampling_params['Distance Data Path'], sampling_params["Number of Samples"], sampling_params['Corresponding Label'], sampling_params['Group Label'], original_data_path=sampling_params['Original Data Path'])
     os.remove(path_to_data_npz)
