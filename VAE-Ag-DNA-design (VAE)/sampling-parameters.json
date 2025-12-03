@@ -7,9 +7,9 @@
         "Model Path": "./models/kfold/a17lds17b0.007g2.0d1.0h15fold0.pt",
         "Path to R": "R",
         "Wavelength_Filter": {
-            "mode": "greater_than",
+            "mode": "between",
             "value1": 0.0,
-            "value2": null
+            "value2": 1000.0
         }
     }
 }

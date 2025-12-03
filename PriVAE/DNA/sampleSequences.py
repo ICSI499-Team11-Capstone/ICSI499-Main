@@ -531,11 +531,13 @@ def load_static_resources(original_data_path, model_path, distance_data_path, pr
     }
 
 
-def sampling(path_to_data_file: str, path_to_model: str, path_to_put: str, path_to_distance_file: str, num_of_samples: int, c_label: int, group_label: str, original_data_path: str = None, static_resources=None, progress_callback=None) -> np.ndarray:
+def sampling(path_to_data_file: str, path_to_model: str, path_to_put: str, path_to_distance_file: str, num_of_samples: int, c_label: int, group_label: str, original_data_path: str = None, static_resources=None, progress_callback=None) -> str:
     """This function serves as a main function for the sampling process, taking in the path to the data file with the
     .npz extension, the path to the trained model used for sampling and a path to write the resulting sequences.
     Set the boolean value to True to only return the randomly sampled vectors from the truncated distribution,
     otherwise it decodes samples and writes to file path specified in arguments."""
+    
+    print(f"DEBUG: sampling called with group_label='{group_label}'")
 
     def log(msg):
         if progress_callback:
@@ -670,6 +672,13 @@ def sampling(path_to_data_file: str, path_to_model: str, path_to_put: str, path_
     z_mean = z_mean[label_inds]
     z_std = z_log_std[label_inds]
     purity = purity[label_inds]
+
+    # just if no samples found for the specified group label
+    if z_mean.shape[0] == 0:
+        print(f"Error: No samples found for group label '{group_label}'. Available labels: {list(label_counts.keys())}")
+        # Return empty result or handle gracefully
+        # For now, we can't proceed with generation
+        return path_to_put_folder
 
     print("after 1   ", z_mean.shape)
     print("after 2   ", z_std.shape)
