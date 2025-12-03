@@ -5,6 +5,11 @@
         "LII Proxy Threshold": 90,
         "Original Data Path": "./data-and-cleaning/cleandata.csv",
         "Model Path": "./models/kfold/a17lds17b0.007g2.0d1.0h15fold0.pt",
-        "Path to R": "R"
+        "Path to R": "R",
+        "Wavelength_Filter": {
+            "mode": "greater_than",
+            "value1": 0.0,
+            "value2": null
+        }
     }
 }

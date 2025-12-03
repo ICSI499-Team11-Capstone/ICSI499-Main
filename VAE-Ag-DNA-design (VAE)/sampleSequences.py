@@ -76,19 +76,69 @@ def calculate_lower_bound_vector(mean_matrix, wavelength_matrix, lii_matrix, wv_
     """This is used to calculate the lower-bound vector for random sampling from the truncated
     normal distribution. It sets the 0th dimension and 1st dimensions of z space to certain values.
     The rest of the dimensions are the minimum values observed in the latent sample for the dimensions."""
+    
+    # --- MODIFICATION START ---
+    # Read wavelength filter settings from the global sampling_params
+    try:
+        wv_filter_params = sampling_params['Wavelength_Filter']
+        filter_mode = wv_filter_params.get('mode', 'less_than') # Default to 'less_than' if not specified
+        filter_val1 = wv_filter_params.get('value1')
+        filter_val2 = wv_filter_params.get('value2')
+    except KeyError:
+        print("Warning: 'Wavelength_Filter' not found in sampling-parameters.json. Defaulting to '< 590'.")
+        filter_mode = 'less_than'
+        filter_val1 = 590
+        filter_val2 = None
+
     wav_arr = np.array([])
     for i, elem in enumerate(mean_matrix[:, 0]): # column of values of wavelength dim
-        if wavelength_matrix[i] < 590: # signifies all data points with near-IR wavelength criteria
+        
+        # Apply the filter logic based on parameters from JSON
+        wv_value = wavelength_matrix[i]
+        condition_met = False
+
+        if filter_mode == 'less_than':
+            if filter_val1 is not None and wv_value < filter_val1:
+                condition_met = True
+        elif filter_mode == 'greater_than':
+            if filter_val1 is not None and wv_value > filter_val1:
+                condition_met = True
+        elif filter_mode == 'between':
+            if filter_val1 is not None and filter_val2 is not None and filter_val1 < wv_value < filter_val2:
+                condition_met = True
+        else:
+            # Default or fallback behavior if mode is unrecognized
+            if i == 0: # Print warning only once
+                print(f"Warning: Unrecognized Wavelength_Filter mode '{filter_mode}'. No filter applied.")
+            # As a safe default, let's include nothing if mode is unknown
+            condition_met = False 
+
+        if condition_met:
             wav_arr = np.append(wav_arr, elem)
-    wav_mean = np.mean(wav_arr)
-    wav_std = np.std(wav_arr) # Calculating mean and standard deviation for wavelength dimension for near-IR class
+            
+    # --- MODIFICATION END ---
+
+    if wav_arr.size == 0:
+        print("Warning: Wavelength filter resulted in zero sequences. Check filter parameters.")
+        # Set to NaN or handle as appropriate to avoid division by zero
+        wav_mean = np.nan 
+        wav_std = np.nan
+    else:
+        wav_mean = np.mean(wav_arr)
+        wav_std = np.std(wav_arr) # Calculating mean and standard deviation for wavelength dimension
 
     lii_arr = np.array([])
     for j, elem in enumerate(mean_matrix[:,1]): # column of values of LII dim
         if lii_matrix[j] < 1: # signifies all data points with near-IR LII criteria
             lii_arr = np.append(lii_arr, elem)
-    lii_mean = np.mean(lii_arr)
-    lii_std = np.std(lii_arr) # Calculating mean and standard deviation for LII dimension for near-IR class
+    
+    if lii_arr.size == 0:
+        print("Warning: LII filter (LII < 1) resulted in zero sequences.")
+        lii_mean = np.nan
+        lii_std = np.nan
+    else:
+        lii_mean = np.mean(lii_arr)
+        lii_std = np.std(lii_arr) # Calculating mean and standard deviation for LII dimension for near-IR class
     
 
     mean_matrix_dims = mean_matrix.shape

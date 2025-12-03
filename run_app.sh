@@ -42,6 +42,88 @@ API_PORT=${API_PORT:-8000}
 FRONTEND_PORT=${PORT:-4321}
 API_HOST=${API_HOST:-0.0.0.0}
 
+# Detect Python
+if command -v python3 &>/dev/null; then
+    PYTHON_CMD=python3
+elif command -v python &>/dev/null; then
+    PYTHON_CMD=python
+else
+    echo "Error: Python not found. Please install Python 3."
+    exit 1
+fi
+
+echo "Using Python: $PYTHON_CMD"
+
+# Check for R
+if ! command -v R &>/dev/null; then
+    echo "Warning: R is not found. VAE/PriVAE sampling may fail."
+    echo "Please install R (e.g., sudo apt install r-base)."
+fi
+
+# Setup Virtual Environment
+VENV_DIR=".venv"
+SYSTEM_PYTHON=$PYTHON_CMD
+
+# Check if venv exists and is valid
+if [ ! -f "$VENV_DIR/bin/python" ]; then
+    echo "Creating virtual environment in $VENV_DIR..."
+    rm -rf "$VENV_DIR" # Remove broken venv if exists
+    
+    # Try to create venv with pip
+    if ! $SYSTEM_PYTHON -m venv $VENV_DIR; then
+        echo "Error: Failed to create virtual environment."
+        echo "Please install python3-venv (e.g., sudo apt install python3-venv) or python3-full."
+        exit 1
+    fi
+fi
+
+# Use the virtual environment's Python
+PYTHON_CMD="$VENV_DIR/bin/python"
+PIP_CMD="$VENV_DIR/bin/pip"
+
+# Check if pip exists in venv, if not try to bootstrap it
+if [ ! -f "$PIP_CMD" ]; then
+    echo "Pip not found in virtual environment. Attempting to bootstrap..."
+    # Try ensurepip
+    if ! $PYTHON_CMD -m ensurepip >/dev/null 2>&1; then
+        # If ensurepip fails (common on Debian/Ubuntu without python3-venv), try downloading get-pip.py
+        echo "ensurepip failed. Downloading get-pip.py..."
+        curl -sS https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+        $PYTHON_CMD get-pip.py
+        rm get-pip.py
+    fi
+fi
+
+# Verify pip is now available
+if [ ! -f "$PIP_CMD" ]; then
+    echo "Error: Failed to install pip in virtual environment."
+    echo "Please install python3-venv and python3-pip on your system:"
+    echo "sudo apt install python3-venv python3-pip"
+    exit 1
+fi
+
+# Check for backend dependencies
+echo "[0/3] Checking dependencies..."
+if ! $PYTHON_CMD -c "import uvicorn" &>/dev/null; then
+    echo "Installing backend dependencies..."
+    
+    # Upgrade pip in venv just in case
+    $PIP_CMD install --upgrade pip
+
+    if ! $PIP_CMD install -r DNA-Design-Web/backend/requirements.txt; then
+        echo "Error: Failed to install backend dependencies."
+        exit 1
+    fi
+fi
+
+# Check for frontend dependencies
+if [ ! -d "DNA-Design-Web/node_modules" ]; then
+    echo "Installing frontend dependencies..."
+    cd DNA-Design-Web
+    npm install
+    cd ..
+fi
+
 # 1. Kill existing processes
 echo "[1/3] Cleaning up existing processes..."
 fuser -k $API_PORT/tcp >/dev/null 2>&1
@@ -51,7 +133,15 @@ sleep 1
 # 2. Start Backend
 echo "[2/3] Starting Backend Server (Port $API_PORT)..."
 cd DNA-Design-Web/backend
-python3.14 -m uvicorn app.main:app --reload --host $API_HOST --port $API_PORT &
+
+# Verify Python executable exists before running
+if [ ! -f "../../$PYTHON_CMD" ]; then
+    echo "Error: Python executable not found at ../../$PYTHON_CMD"
+    echo "Current directory: $(pwd)"
+    exit 1
+fi
+
+../../$PYTHON_CMD -m uvicorn app.main:app --reload --host $API_HOST --port $API_PORT &
 BACKEND_PID=$!
 
 # Wait a moment for backend to start
@@ -64,10 +154,13 @@ npm run dev -- --port $FRONTEND_PORT &
 FRONTEND_PID=$!
 
 echo "----------------------------------------"
-echo "  App is running!"
-echo "  Frontend: http://localhost:$FRONTEND_PORT"
-echo "  Backend:  http://localhost:$API_PORT"
-echo "  Press Ctrl+C to stop both servers."
+echo "  DNA Design System Initialized Successfully"
+echo "----------------------------------------"
+echo "  • Frontend Interface:  http://localhost:$FRONTEND_PORT"
+echo "  • Backend API Server:  http://localhost:$API_PORT"
+echo ""
+echo "  System is ready for use."
+echo "  Press Ctrl+C to gracefully shut down all services."
 echo "----------------------------------------"
 
 # Wait for processes

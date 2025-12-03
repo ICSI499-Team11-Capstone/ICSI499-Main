@@ -290,7 +290,28 @@ def write_encoded_sequence_wavelength_lii(path_to_generated: str, path_to_data_f
         decoded = decoded.detach().cpu().numpy()
         for i, line in enumerate(file_contents):
             if i < np.shape(z_value)[0]:
-                sequence_original = line.split(',')[0]
+                # line is from detailed-sequences, which has format:
+                # Sequence Generated,Value Generated,Purity,Top 15 Neighbors,Corresponding Neighbor Sequences
+                parts = line.strip().split(',')
+                
+                # We need to reconstruct the line but append Value Encoded, Sequence Reconstructed, Ratio
+                # The original code was doing: f.write(f"{line.strip()},{vals},{sequence_generated},{ratio}\n")
+                # But line already had some columns.
+                
+                # Let's assume line is the content from detailed-sequences
+                # detailed-sequences was written in write_detailed_sequences as:
+                # f.write(f"{line[:line.rindex(newline)-1]},{vals},{generated_purity[i]},{neighbor_labels_list[i]},{neighbor_sequences_list[i]}\n")
+                # Wait, write_detailed_sequences writes to detailed-sequences.
+                # write_encoded_sequence_wavelength_lii reads detailed-sequences (passed as path_to_generated) and appends more columns?
+                
+                # In post_processing:
+                # detailed_data_path = write_detailed_sequences(...)
+                # generated_data_path = process_data_file(...) -> this creates a .npz file
+                # write_encoded_sequence_wavelength_lii(detailed_data_path, generated_data_path, ...)
+                
+                # So path_to_generated in write_encoded_sequence_wavelength_lii IS detailed_data_path.
+                
+                sequence_original = parts[0] # Sequence Generated
                 sequence_generated = convert_sample(decoded[i, :, :])
                 ratio = compare_sequences(sequence_original, sequence_generated)
                 ######
@@ -545,8 +566,9 @@ def sampling(path_to_data_file: str, path_to_model: str, path_to_put: str, path_
 
     log("sampliiiiiing  ...")
 
-    path_to_put_folder = f"{path_to_put}/samples-{time.time()}"
-    os.mkdir(path_to_put_folder)
+    path_to_put_folder = f"{path_to_put}/samples-outputted"
+    if not os.path.exists(path_to_put_folder):
+        os.mkdir(path_to_put_folder)
 
     if static_resources:
         data_file = static_resources['data_file']
