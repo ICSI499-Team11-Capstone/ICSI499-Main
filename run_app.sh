@@ -54,6 +54,21 @@ fi
 
 echo "Using Python: $PYTHON_CMD"
 
+# Check Python version (Require 3.12+)
+PYTHON_VERSION=$($PYTHON_CMD -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+PYTHON_MAJOR=$(echo "$PYTHON_VERSION" | cut -d. -f1)
+PYTHON_MINOR=$(echo "$PYTHON_VERSION" | cut -d. -f2)
+
+if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 12 ]); then
+    echo "Error: Python 3.12 or higher is required. Found version $PYTHON_VERSION"
+    exit 1
+fi
+
+if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 12 ]); then
+    echo "Error: Python 3.12 or higher is required. Found Python $PYTHON_VERSION"
+    exit 1
+fi
+
 # Check for R
 if ! command -v R &>/dev/null; then
     echo "Warning: R is not found. VAE/PriVAE sampling may fail."
@@ -79,10 +94,9 @@ fi
 
 # Use the virtual environment's Python
 PYTHON_CMD="$VENV_DIR/bin/python"
-PIP_CMD="$VENV_DIR/bin/pip"
 
 # Check if pip exists in venv, if not try to bootstrap it
-if [ ! -f "$PIP_CMD" ]; then
+if ! $PYTHON_CMD -m pip --version >/dev/null 2>&1; then
     echo "Pip not found in virtual environment. Attempting to bootstrap..."
     # Try ensurepip
     if ! $PYTHON_CMD -m ensurepip >/dev/null 2>&1; then
@@ -95,7 +109,7 @@ if [ ! -f "$PIP_CMD" ]; then
 fi
 
 # Verify pip is now available
-if [ ! -f "$PIP_CMD" ]; then
+if ! $PYTHON_CMD -m pip --version >/dev/null 2>&1; then
     echo "Error: Failed to install pip in virtual environment."
     echo "Please install python3-venv and python3-pip on your system:"
     echo "sudo apt install python3-venv python3-pip"
@@ -108,9 +122,9 @@ if ! $PYTHON_CMD -c "import uvicorn" &>/dev/null; then
     echo "Installing backend dependencies..."
     
     # Upgrade pip in venv just in case
-    $PIP_CMD install --upgrade pip
+    $PYTHON_CMD -m pip install --upgrade pip
 
-    if ! $PIP_CMD install -r DNA-Design-Web/backend/requirements.txt; then
+    if ! $PYTHON_CMD -m pip install -r DNA-Design-Web/backend/requirements.txt; then
         echo "Error: Failed to install backend dependencies."
         exit 1
     fi

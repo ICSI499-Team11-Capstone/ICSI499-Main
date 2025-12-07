@@ -452,6 +452,11 @@ def save_to_excel(sequences, labels, z_values, purities, neighbor_labels_15, fil
 
 
 def load_static_resources(original_data_path, model_path, distance_data_path, progress_callback=None):
+    """
+    Loads and caches heavy resources (Model, Dataset, Distance Matrix) into memory.
+    This is critical for the Web API to avoid reloading/recomputing these assets 
+    for every single generation request, significantly reducing latency.
+    """
     def log(msg):
         if progress_callback:
             progress_callback(msg)

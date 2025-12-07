@@ -36,6 +36,15 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
+:: Check Python Version (Require 3.12+)
+python -c "import sys; exit(0) if sys.version_info >= (3, 12) else exit(1)"
+if %errorlevel% neq 0 (
+    echo Error: Python 3.12 or higher is required.
+    python --version
+    pause
+    exit /b 1
+)
+
 :: Check R
 R --version >nul 2>&1
 if %errorlevel% neq 0 (
