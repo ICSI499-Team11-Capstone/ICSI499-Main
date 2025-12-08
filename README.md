@@ -7,6 +7,7 @@ A comprehensive tool for designing DNA sequences with specific fluorescence prop
 ### Prerequisites
 - **Python 3.12+**
 - **Node.js 18+**
+- **R (Required for VAE/PriVAE sampling)**
 - **Git**
 
 ### Installation
@@ -19,13 +20,15 @@ A comprehensive tool for designing DNA sequences with specific fluorescence prop
 
 2. **Install Dependencies:**
    
-   *Backend:*
+   The provided startup scripts (`run_app.sh` and `run_app.bat`) will automatically check for and install most dependencies, including required R packages.
+
+   *Manual Backend Setup:*
    ```bash
    cd DNA-Design-Web/backend
    pip install -r requirements.txt
    ```
 
-   *Frontend:*
+   *Manual Frontend Setup:*
    ```bash
    cd ../  # Go to DNA-Design-Web/
    npm install
@@ -48,19 +51,18 @@ A comprehensive tool for designing DNA sequences with specific fluorescence prop
 ### Configuration
 
 > [!NOTE]
-> The application uses `.env` files for configuration. You can customize ports and URLs by creating `.env` files based on the provided examples.
+> This project includes pre-configured `.env` files in the repository for ease of setup.
+
+- **Frontend**: The `.env` file in `DNA-Design-Web/` is already set up with default values.
+- **Backend**: The `.env` file in `DNA-Design-Web/backend/` is already set up with default values.
+
+You do not need to manually create these files unless you need to override specific settings.
 
 1.  **Frontend Configuration** (`DNA-Design-Web/.env`):
-    ```bash
-    cp DNA-Design-Web/.env.example DNA-Design-Web/.env
-    ```
     *   `PUBLIC_API_URL`: URL of the backend API (default: `http://localhost:8000`)
     *   `PORT`: Port for the frontend server (default: `4321`)
 
 2.  **Backend Configuration** (`DNA-Design-Web/backend/.env`):
-    ```bash
-    cp DNA-Design-Web/backend/.env.example DNA-Design-Web/backend/.env
-    ```
     *   `API_HOST`: Host for the backend server (default: `0.0.0.0`)
     *   `API_PORT`: Port for the backend server (default: `8000`)
     *   `FRONTEND_URL`: URL of the frontend (for CORS) (default: `http://localhost:4321`)

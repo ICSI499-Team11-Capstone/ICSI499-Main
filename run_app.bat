@@ -50,6 +50,9 @@ R --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo Warning: R is not found in PATH. VAE/PriVAE sampling may fail.
     echo Please install R and add it to your PATH.
+) else (
+    echo Checking R packages...
+    Rscript -e "lib_path <- Sys.getenv('R_LIBS_USER'); if (!dir.exists(lib_path)) dir.create(lib_path, recursive = TRUE); .libPaths(c(lib_path, .libPaths())); required_packages <- c('tmvtnorm', 'corpcor', 'gmm', 'sandwich', 'mvtnorm'); installed <- installed.packages()[,'Package']; missing <- required_packages[!(required_packages %%in%% installed)]; if (length(missing) > 0) { message('Installing missing R packages...'); install.packages(missing, repos='https://cloud.r-project.org', lib=lib_path) } else { message('All required R packages are installed.') }"
 )
 
 :: Setup Virtual Environment
@@ -95,7 +98,7 @@ taskkill /F /IM node.exe /T >nul 2>&1
 :: 2. Start Backend
 echo [2/3] Starting Backend Server (Port %API_PORT%)...
 cd DNA-Design-Web\backend
-start "DNA Backend" ..\..\%PYTHON_CMD% -m uvicorn app.main:app --reload --host %API_HOST% --port %API_PORT%
+start "DNA Backend" ..\..\%VENV_DIR%\Scripts\fastapi.exe dev app/main.py --host %API_HOST% --port %API_PORT%
 
 :: Wait a moment
 timeout /t 3 /nobreak >nul

@@ -73,6 +73,29 @@ fi
 if ! command -v R &>/dev/null; then
     echo "Warning: R is not found. VAE/PriVAE sampling may fail."
     echo "Please install R (e.g., sudo apt install r-base)."
+else
+    echo "Checking R packages..."
+    # Ensure local library directory exists
+    mkdir -p ~/R/library
+    export R_LIBS_USER=~/R/library
+    
+    # Install required packages if missing
+    Rscript -e '
+    lib_path <- Sys.getenv("R_LIBS_USER")
+    if (!dir.exists(lib_path)) dir.create(lib_path, recursive = TRUE)
+    .libPaths(c(lib_path, .libPaths()))
+    
+    required_packages <- c("tmvtnorm", "corpcor", "gmm", "sandwich", "mvtnorm")
+    installed <- installed.packages()[,"Package"]
+    missing <- required_packages[!(required_packages %in% installed)]
+    
+    if (length(missing) > 0) {
+        message("Installing missing R packages: ", paste(missing, collapse=", "))
+        install.packages(missing, repos="https://cloud.r-project.org", lib=lib_path)
+    } else {
+        message("All required R packages are installed.")
+    }
+    '
 fi
 
 # Setup Virtual Environment
@@ -155,7 +178,8 @@ if [ ! -f "../../$PYTHON_CMD" ]; then
     exit 1
 fi
 
-../../$PYTHON_CMD -m uvicorn app.main:app --reload --host $API_HOST --port $API_PORT &
+# Use fastapi dev for development
+../../$VENV_DIR/bin/fastapi dev app/main.py --host $API_HOST --port $API_PORT &
 BACKEND_PID=$!
 
 # Wait a moment for backend to start
