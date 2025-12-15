@@ -42,6 +42,8 @@ API_PORT=${API_PORT:-8000}
 FRONTEND_PORT=${PORT:-4321}
 API_HOST=${API_HOST:-0.0.0.0}
 
+echo "[0/3] Checking dependencies..."
+
 # Detect Python
 if command -v python3 &>/dev/null; then
     PYTHON_CMD=python3
@@ -61,11 +63,6 @@ PYTHON_MINOR=$(echo "$PYTHON_VERSION" | cut -d. -f2)
 
 if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 12 ]); then
     echo "Error: Python 3.12 or higher is required. Found version $PYTHON_VERSION"
-    exit 1
-fi
-
-if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 12 ]); then
-    echo "Error: Python 3.12 or higher is required. Found Python $PYTHON_VERSION"
     exit 1
 fi
 
@@ -140,7 +137,6 @@ if ! $PYTHON_CMD -m pip --version >/dev/null 2>&1; then
 fi
 
 # Check for backend dependencies
-echo "[0/3] Checking dependencies..."
 if ! $PYTHON_CMD -c "import uvicorn" &>/dev/null; then
     echo "Installing backend dependencies..."
     
@@ -162,9 +158,15 @@ if [ ! -d "DNA-Design-Web/node_modules" ]; then
 fi
 
 # 1. Kill existing processes
-echo "[1/3] Cleaning up existing processes..."
+echo "[1/3] Cleaning up existing processes and files..."
 fuser -k $API_PORT/tcp >/dev/null 2>&1
 fuser -k $FRONTEND_PORT/tcp >/dev/null 2>&1
+# Initial cleanup (in case previous session didn't exit cleanly)
+rm -rf "PriVAE/DNA/data-for-sampling/samples-"* 2>/dev/null
+rm -f "PriVAE/DNA/data-for-sampling/processed-data-files/"* 2>/dev/null
+rm -rf "VAE-Ag-DNA-design (VAE)/data-for-sampling/past-samples-with-info/samples-"* 2>/dev/null
+rm -f "VAE-Ag-DNA-design (VAE)/data-for-sampling/processed-data-files/"* 2>/dev/null
+rm -f "Ag-DNA-design (Classifier)/predictions.csv" 2>/dev/null
 sleep 1
 
 # 2. Start Backend
@@ -183,7 +185,7 @@ fi
 BACKEND_PID=$!
 
 # Wait a moment for backend to start
-sleep 2
+sleep 3
 
 # 3. Start Frontend
 echo "[3/3] Starting Frontend Server (Port $FRONTEND_PORT)..."
@@ -194,8 +196,8 @@ FRONTEND_PID=$!
 echo "----------------------------------------"
 echo "  DNA Design System Initialized Successfully"
 echo "----------------------------------------"
-echo "  • Frontend Interface:  http://localhost:$FRONTEND_PORT"
-echo "  • Backend API Server:  http://localhost:$API_PORT"
+echo "  * Frontend Interface:  http://localhost:$FRONTEND_PORT"
+echo "  * Backend API Server:  http://localhost:$API_PORT"
 echo ""
 echo "  System is ready for use."
 echo "  Press Ctrl+C to gracefully shut down all services."

@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal EnableDelayedExpansion
 
 :: Default Configuration
 set API_PORT=8000
@@ -74,7 +74,11 @@ set PIP_CMD=%VENV_DIR%\Scripts\pip.exe
 "%PYTHON_CMD%" -c "import uvicorn" >nul 2>&1
 if %errorlevel% neq 0 (
     echo Installing backend dependencies...
-    "%PIP_CMD%" install -r DNA-Design-Web\backend\requirements.txt
+    
+    :: Upgrade pip
+    "%PYTHON_CMD%" -m pip install --upgrade pip
+    
+    "%PYTHON_CMD%" -m pip install -r DNA-Design-Web\backend\requirements.txt
     if %errorlevel% neq 0 (
         echo Error: Failed to install backend dependencies.
         pause
@@ -90,17 +94,28 @@ if not exist "DNA-Design-Web\node_modules" (
     cd ..
 )
 
-:: 1. Kill existing processes (optional, might fail if not running)
-echo [1/3] Cleaning up existing processes...
+:: 1. Clean up (Processes and Files)
+echo [1/3] Cleaning up existing processes and files...
 taskkill /F /IM python.exe /T >nul 2>&1
 taskkill /F /IM node.exe /T >nul 2>&1
+
+:: Clean PriVAE Generated Files
+if exist "PriVAE\DNA\data-for-sampling\samples-*" for /d %%p in ("PriVAE\DNA\data-for-sampling\samples-*") do rmdir /s /q "%%p" >nul 2>&1
+if exist "PriVAE\DNA\data-for-sampling\processed-data-files\*" del /q "PriVAE\DNA\data-for-sampling\processed-data-files\*" >nul 2>&1
+
+:: Clean VAE Generated Files
+if exist "VAE-Ag-DNA-design (VAE)\data-for-sampling\past-samples-with-info\samples-*" for /d %%p in ("VAE-Ag-DNA-design (VAE)\data-for-sampling\past-samples-with-info\samples-*") do rmdir /s /q "%%p" >nul 2>&1
+if exist "VAE-Ag-DNA-design (VAE)\data-for-sampling\processed-data-files\*" del /q "VAE-Ag-DNA-design (VAE)\data-for-sampling\processed-data-files\*" >nul 2>&1
+
+:: Clean Classifier Predictions
+if exist "Ag-DNA-design (Classifier)\predictions.csv" del /q "Ag-DNA-design (Classifier)\predictions.csv" >nul 2>&1
 
 :: 2. Start Backend
 echo [2/3] Starting Backend Server (Port %API_PORT%)...
 cd DNA-Design-Web\backend
 start "DNA Backend" ..\..\%VENV_DIR%\Scripts\fastapi.exe dev app/main.py --host %API_HOST% --port %API_PORT%
 
-:: Wait a moment
+:: Wait a moment for backend to initialize
 timeout /t 3 /nobreak >nul
 
 :: 3. Start Frontend
